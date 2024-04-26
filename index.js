@@ -1,14 +1,15 @@
-const app = require("./app")
-const { connectToTheDatabase } = require("./dbconnect")
+import dotenv from "dotenv"
+dotenv.config()
+import app from "./app.js"
+import { connectToTheDatabase } from "./dbconnect.js"
 
-const PORT = process.env.PORT || 80
-const DB_URL = process.env.DB_URL
+const port = process.env.PORT || 80
+const db_url = process.env.DB_URL || ""
 
-connectToTheDatabase(DB_URL).then(() => {
-    app.listen(PORT, () => {
-        console.log("Server is running on port ", PORT)
+connectToTheDatabase(db_url).then(() => {
+    app.listen(port, () => {
+        console.log("Server is running on port ", port)
     })
 }).catch((err) => {
     console.log("Error occurred while connecting to the database ", err.message);
-}
-)
+})
