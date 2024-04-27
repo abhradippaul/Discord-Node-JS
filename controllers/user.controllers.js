@@ -1,6 +1,6 @@
 import User from "../models/user.models.js";
 
-export async function getUser(req, res) {
+export async function getUserInfo(req, res) {
     try {
         const { userEmail } = req.params
         if (!userEmail) {
@@ -12,6 +12,23 @@ export async function getUser(req, res) {
                 $match: {
                     email: userEmail
                 }
+            },
+            {
+                $lookup : {
+                    from: "server_members",
+                    localField: "_id",
+                    foreignField: "user",
+                    as: "server"
+                }
+            },
+            {
+                $project : {
+                    _id: 0,
+                    name: 1,
+                    email: 1,
+                    imageUrl: 1,
+                    server: 1
+                }
             }
         ])
 
@@ -21,7 +38,7 @@ export async function getUser(req, res) {
 
         return res.status(200).json({
             success: true,
-            data: response,
+            data: response[0],
             message: "User found successfully"
         })
     } catch (err) {

@@ -3,7 +3,7 @@ import { Schema, model } from "mongoose";
 const channelSchema = new Schema({
     user: {
         type: Schema.Types.ObjectId,
-        ref: "user"
+        ref: "User"
     },
     channel: {
         type: String,
@@ -12,6 +12,6 @@ const channelSchema = new Schema({
     }
 }, { timestamps: true })
 
-const Channel = model("channel", channelSchema)
+const Channel = model("Channel", channelSchema)
 
 export default Channel;

@@ -8,6 +8,6 @@ const memberRoleSchema = new Schema({
     }
 }, { timestamps: true })
 
-const MemberRole = model("member_role", memberRoleSchema)
+const MemberRole = model("Member_role", memberRoleSchema)
 
 export default MemberRole;

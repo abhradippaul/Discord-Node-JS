@@ -3,18 +3,18 @@ import { Schema, model } from "mongoose";
 const serverMemberSchema = new Schema({
     user : {
         type : Schema.Types.ObjectId,
-        ref : "user"
+        ref : "User"
     },
     server : {
         type : Schema.Types.ObjectId,
-        ref : "server"
+        ref : "Server"
     },
     role : {
         type : Schema.Types.ObjectId,
-        ref : "role"
+        ref : "Role"
     }
 }, { timestamps: true })
 
-const ServerMember = model("server_member", serverMemberSchema)
+const ServerMember = model("Server_member", serverMemberSchema)
 
 export default ServerMember;

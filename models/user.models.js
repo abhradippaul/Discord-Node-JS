@@ -12,10 +12,6 @@ const userSchema = new Schema({
         type: String,
         required: true,
         unique: true
-    },
-    server: {
-        type: Schema.Types.ObjectId,
-        ref: "server_member"
     }
 }, { timestamps: true })
 

@@ -13,14 +13,14 @@ const serverSchema = new Schema({
     },
     channel : {
         type: Schema.Types.ObjectId,
-        ref: "channel"
+        ref: "Channel"
     },
     member : {
         type: Schema.Types.ObjectId,
-        ref: "server_member"
+        ref: "Server_member"
     }
 }, { timestamps: true })
 
-const Server = model("server", serverSchema)
+const Server = model("Server", serverSchema)
 
 export default Server;
