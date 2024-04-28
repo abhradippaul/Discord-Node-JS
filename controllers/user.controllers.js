@@ -1,3 +1,4 @@
+import { getUserInfoFromMongodb } from "../helpers/user.helpers.js";
 import User from "../models/user.models.js";
 
 export async function getUserInfo(req, res) {
@@ -7,30 +8,7 @@ export async function getUserInfo(req, res) {
             return res.status(400).json({ message: "Please provide a user email" });
         }
 
-        const response = await User.aggregate([
-            {
-                $match: {
-                    email: userEmail
-                }
-            },
-            {
-                $lookup : {
-                    from: "server_members",
-                    localField: "_id",
-                    foreignField: "user",
-                    as: "server"
-                }
-            },
-            {
-                $project : {
-                    _id: 0,
-                    name: 1,
-                    email: 1,
-                    imageUrl: 1,
-                    server: 1
-                }
-            }
-        ])
+        const response = await getUserInfoFromMongodb(userEmail)
 
         if (!response.length) {
             return res.status(400).json({ message: "User does not exist" });
@@ -62,7 +40,7 @@ export async function createUser(req, res) {
         const response = await User.create({
             name,
             email,
-            imageUrl : imageUrl || ""
+            imageUrl: imageUrl || ""
         })
 
         if (!response._id) {
@@ -83,6 +61,45 @@ export async function createUser(req, res) {
     }
 }
 
+export async function updateUserImage(req, res) {
+    try {
+        const { imageUrl, name } = req.body
+        const { userName } = req.params
+        if (name) {
+            return res.status(200).json({
+                message: "User name cannot be changed"
+            })
+        }
+        if (!userName) {
+            return res.status(400).json({
+                message: "Please provide a server name"
+            })
+        }
+        if (!imageUrl) {
+            return res.status(400).json({
+                message: "Please provide an image url"
+            })
+        }
+        const response = await Server.updateOne({ name: userName }, { $set: { imageUrl: imageUrl } })
+
+        if (!response.modifiedCount) {
+            return res.status(400).json({
+                message: "Error in updating image"
+            })
+        }
+
+        return res.status(200).json({
+            message: "Image updated successfully",
+            data: response
+        })
+
+    } catch (err) {
+        return res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
 export async function deleteUser(req, res) {
     try {
         const { userEmail } = req.params
@@ -93,7 +110,7 @@ export async function deleteUser(req, res) {
         }
         const isDeleted = await User.deleteOne({ email: userEmail })
 
-        if(!isDeleted.deletedCount) {
+        if (!isDeleted.deletedCount) {
             return res.status(400).json({
                 message: "Error occurred while deleting"
             })

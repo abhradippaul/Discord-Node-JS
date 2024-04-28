@@ -3,7 +3,8 @@ import { Schema, model } from "mongoose";
 const serverSchema = new Schema({
     name: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     imageUrl: {
         type: String

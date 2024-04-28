@@ -9,9 +9,10 @@ const serverMemberSchema = new Schema({
         type : Schema.Types.ObjectId,
         ref : "Server"
     },
-    role : {
-        type : Schema.Types.ObjectId,
-        ref : "Role"
+    role: {
+        type: String,
+        enum: ["Admin", "Moderator", "Guest"],
+        default: "Guest"
     }
 }, { timestamps: true })
 

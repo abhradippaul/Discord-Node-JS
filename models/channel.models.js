@@ -5,6 +5,10 @@ const channelSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "User"
     },
+    server: {
+        type: Schema.Types.ObjectId,
+        ref: "Server"
+    },
     channel: {
         type: String,
         enum: ["Text", "Audio", "Video"],
