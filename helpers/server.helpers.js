@@ -31,11 +31,87 @@ export async function findTheServerWithServerName(serverName) {
     ])
 }
 
-export async function getServerInfoFromMongodb(serverName) {
+export async function getServerInfoFromMongodb(serverId) {
     return await Server.aggregate([
         {
             $match: {
-                name: serverName
+                _id: new mongoose.Types.ObjectId(serverId)
+            }
+        },
+        {
+            $lookup: {
+                from: "server_members",
+                localField: "_id",
+                foreignField: "server",
+                as: "Server_Members",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "user",
+                            foreignField: "_id",
+                            as: "Users"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            UserInfo: {
+                                $first: "$Users"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        // {
+        //     $lookup: {
+        //         from: "channels",
+        //         localField: "channel",
+        //         foreignField: "_id",
+        //         as: "Channel",
+        //         pipeline: [
+        //             {
+        //                 $lookup: {
+        //                     from: "users",
+        //                     localField: "user",
+        //                     foreignField: "_id",
+        //                     as: "Users"
+        //                 }
+        //             },
+        //             {
+        //                 $addFields: {
+        //                     UserInfo: {
+        //                         $first: "$Users"
+        //                     }
+        //                 }
+        //             }
+        //         ]
+        //     }
+        // },
+        {
+            $project: {
+                name: 1,
+                imageUrl: 1,
+                "Server_Members.role": 1,
+                "Server_Members.UserInfo.email": 1,
+                "Server_Members.UserInfo.name": 1,
+                "Server_Members.UserInfo.imageUrl": 1,
+                "Server_Members.UserInfo._id": 1,
+                // "Channel.channel": 1,
+                // "Channel.UserInfo.email": 1,
+                // "Channel.UserInfo.name": 1,
+                // "Channel.UserInfo.imageUrl": 1,
+                // "Channel.UserInfo._id": 1,
+            }
+        }
+    ])
+}
+
+export async function getServerSidebarInfo(serverId) {
+    return await Server.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(serverId)
             }
         },
         {
@@ -64,6 +140,31 @@ export async function getServerInfoFromMongodb(serverName) {
             }
         },
         {
+            $lookup: {
+                from: "channels",
+                localField: "channel",
+                foreignField: "_id",
+                as: "Channel",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "user",
+                            foreignField: "_id",
+                            as: "Users"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            UserInfo: {
+                                $first: "$Users"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
             $project: {
                 name: 1,
                 imageUrl: 1,
@@ -72,6 +173,11 @@ export async function getServerInfoFromMongodb(serverName) {
                 "Server_Members.UserInfo.name": 1,
                 "Server_Members.UserInfo.imageUrl": 1,
                 "Server_Members.UserInfo._id": 1,
+                "Channel.channel": 1,
+                "Channel.UserInfo.email": 1,
+                "Channel.UserInfo.name": 1,
+                "Channel.UserInfo.imageUrl": 1,
+                "Channel.UserInfo._id": 1,
             }
         }
     ])

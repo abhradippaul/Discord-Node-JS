@@ -1,3 +1,4 @@
+import { Schema } from "mongoose"
 import User from "../models/user.models.js"
 
 export async function findTheUserWithEmail(userEmail) {
@@ -56,6 +57,7 @@ export async function getUserInfoFromMongodb(userEmail) {
                 "Server.role": 1,
                 "Server.ServerInfo.name": 1,
                 "Server.ServerInfo.imageUrl": 1,
+                "Server.ServerInfo._id": 1,
             }
         }
     ])

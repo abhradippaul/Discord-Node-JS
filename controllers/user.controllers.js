@@ -4,6 +4,7 @@ import User from "../models/user.models.js";
 export async function getUserInfo(req, res) {
     try {
         const { userEmail } = req.params
+
         if (!userEmail) {
             return res.status(400).json({ message: "Please provide a user email" });
         }

@@ -1,7 +1,10 @@
-import { findTheServerWithServerId, findTheServerWithServerName, getServerInfoFromMongodb } from "../helpers/server.helpers.js";
+import { findTheServerWithServerId, findTheServerWithServerName, getServerInfoFromMongodb, getServerSidebarInfo } from "../helpers/server.helpers.js";
 import { findTheUserWithEmail } from "../helpers/user.helpers.js";
+import Channel from "../models/channel.models.js";
 import Server from "../models/server.models.js";
 import ServerMember from "../models/server_member.models.js";
+import { v4 } from "uuid"
+import User from "../models/user.models.js";
 
 export async function isServerExist(req, res) {
     try {
@@ -66,8 +69,20 @@ export async function createServer(req, res) {
             })
         }
 
+        // const isChannelCreated = await Channel.create({
+        //     user: isUserExist[0]._id,
+        //     server: isServerCreated._id
+        // })
+
+        // if (!isChannelCreated._id) {
+        //     return res.status(400).json({
+        //         message: "Failed to create channel"
+        //     })
+        // }
+
         return res.status(201).json({
             message: "Server created successfully",
+            success: true,
             data: {
                 isServerCreated,
                 isJoinedToServer
@@ -82,55 +97,154 @@ export async function createServer(req, res) {
 
 export async function joinToTheServer(req, res) {
     try {
-        const { userEmail } = req.body
-        const { serverId } = req.params
+        const { userId, serverId } = req.body
 
-        if (!userEmail || !serverId) {
+        if (!userId || !serverId) {
             return res.status(400).json({
-                message: "Please provide user email and server id"
+                message: "Please provide user id, invite code and server id"
             })
         }
 
-        const isUserExist = await findTheUserWithEmail(userEmail)
-
-        if (!isUserExist.length) {
-            return res.status(400).json({
-                message: "User not found"
-            })
-        }
-        const isServerExist = await findTheServerWithServerId(serverId)
-
-
-        if (!isServerExist.length) {
-            return res.status(400).json({
-                message: "Server not found"
-            })
-        }
-
-        const isJoinedToServer = await ServerMember.findOne({
-            user: isUserExist[0]._id,
-            server: serverId,
+        const isJoinedToServer = await ServerMember.create({
+            user: userId,
+            server: serverId
         })
 
-        if (isJoinedToServer?._id) {
+        if (!isJoinedToServer?._id) {
             return res.status(400).json({
                 message: "User already joined to the server"
             })
         }
 
-        const response = await ServerMember.create({
-            user: isUserExist[0]._id,
-            server: serverId
+        return res.status(201).json({
+            message: "Successfully joined to the server",
+            data: isJoinedToServer
         })
-        if (!response._id) {
+    } catch (err) {
+        return res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
+export async function checkIsTheUserAlreadyJoined(req, res) {
+    try {
+        const { userEmail, inviteCode } = req.body
+        const { serverId } = req.params
+        if (!userEmail || !serverId || !inviteCode) {
             return res.status(400).json({
-                message: "Failed to join to the server"
+                message: "Please provide user id, invite code and server id"
+            })
+        }
+
+        const isServerExist = await Server.findOne({
+            _id: serverId,
+            inviteCode: inviteCode
+        }, { inviteCode: 1 })
+
+        if (!isServerExist) {
+            return res.status(400).json({
+                message: "Server does not exist or invite code is not valid"
+            })
+        }
+
+        const isUserExist = await User.findOne({
+            email: userEmail
+        }, { _id: 1 })
+
+        if (!isUserExist) {
+            return res.status(400).json({
+                message: "User does not exist"
+            })
+        }
+
+        const isAlreadyJoined = await ServerMember.findOne({
+            user: isUserExist._id,
+            server: serverId
+        }, { _id: 1 })
+
+        if (isAlreadyJoined?._id) {
+            return res.status(400).json({
+                message: "User already joined to the server"
+            })
+        }
+
+        return res.status(201).json({
+            message: "You have already joined to the server",
+            succes: true,
+            data: {
+                userId : isUserExist._id
+            }
+        })
+    } catch (err) {
+        return res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
+export async function getServerInviteCode(req, res) {
+    try {
+        const { serverId } = req.params
+
+        if (!serverId) {
+            return res.status(400).json({
+                message: "Please provide server id"
+            })
+        }
+
+        const response = await Server.findOne({ _id: serverId }, { inviteCode: 1, _id: 0 })
+
+        if (!response?.inviteCode) {
+            return res.status(400).json({
+                message: "Server not found"
+            })
+        }
+
+        return res.status(200).json({
+            message: "Server found",
+            success: true,
+            inviteCode: response?.inviteCode
+        })
+    } catch (err) {
+        return res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
+export async function createServerInviteCode(req, res) {
+    try {
+        const { serverId } = req.params
+        if (!serverId) {
+            return res.status(400).json({
+                message: "Please provide server id"
+            })
+        }
+
+        const inviteCode = v4()
+
+        if (!inviteCode) {
+            return res.status(400).json({
+                message: "Please provide invite code"
+            })
+        }
+        const isInviteCodeUpdated = await Server.findByIdAndUpdate(serverId, {
+            $set: {
+                inviteCode: inviteCode
+            }
+        }, { new: true })
+
+        if (!isInviteCodeUpdated.inviteCode) {
+            return res.status(400).json({
+                message: "Failed to update invite code"
             })
         }
         return res.status(201).json({
-            message: "Server created successfully",
-            data: response
+            message: "Invite code updated successfully",
+            inviteCode: isInviteCodeUpdated.inviteCode
         })
+
     } catch (err) {
         return res.status(500).json({
             message: err.message
@@ -168,15 +282,15 @@ export async function leaveTheServer(req, res) {
 
 export async function getServer(req, res) {
     try {
-        const { serverName } = req.params
+        const { serverId } = req.params
 
-        if (!serverName) {
+        if (!serverId) {
             return res.status(400).json({
                 message: "Please provide a server name"
             })
         }
 
-        const response = await getServerInfoFromMongodb(serverName)
+        const response = await getServerInfoFromMongodb(serverId)
 
         if (!response.length) {
             return res.status(400).json({
@@ -186,6 +300,37 @@ export async function getServer(req, res) {
 
         return res.status(200).json({
             message: "Server found",
+            success: true,
+            data: response[0]
+        })
+    } catch (err) {
+        return res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
+export async function serverSidebarInfo(req, res) {
+    try {
+        const { serverId } = req.params
+
+        if (!serverId) {
+            return res.status(400).json({
+                message: "Please provide a server name"
+            })
+        }
+
+        const response = await getServerSidebarInfo(serverId)
+
+        if (!response.length) {
+            return res.status(400).json({
+                message: "Server not found"
+            })
+        }
+
+        return res.status(200).json({
+            message: "Server found",
+            success: true,
             data: response[0]
         })
     } catch (err) {
@@ -250,7 +395,7 @@ export async function deleteServer(req, res) {
                 message: "Error occurred while deleting"
             })
         }
-        
+
         return res.status(200).json({
             success: true,
             data: response
