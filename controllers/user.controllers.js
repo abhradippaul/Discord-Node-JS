@@ -1,6 +1,30 @@
 import { getUserInfoFromMongodb } from "../helpers/user.helpers.js";
 import User from "../models/user.models.js";
 
+export async function isTheUserExist (req,res) {
+    try {
+        const {userEmail} = req.params
+        if (!userEmail) {
+            return res.status(400).json({
+                message: "Please provide a user email"
+            })
+        }
+        const isUserExist = await User.findOne({ email: userEmail },{_id : 1})
+        if(!isUserExist) {
+            return res.status(400).json({
+                message: "User does not exist"
+            })
+        }
+        return res.status(200).json({
+            success: true
+        })
+    } catch (err) {
+        return res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
 export async function getUserInfo(req, res) {
     try {
         const { userEmail } = req.params

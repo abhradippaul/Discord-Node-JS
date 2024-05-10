@@ -182,3 +182,51 @@ export async function getServerSidebarInfo(serverId) {
         }
     ])
 }
+
+export async function getServerInfoFromMongodbForServerInvitation(serverId, inviteCode, userId) {
+    return await Server.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(serverId),
+                inviteCode: inviteCode,
+            }
+        },
+        {
+            $lookup: {
+                from: "server_members",
+                localField: "_id",
+                foreignField: "server",
+                as: "Server_Members",
+            }
+        },
+        {
+            $addFields: {
+                "isJoined": {
+                    $cond: {
+                        if: {
+                            $in: [new mongoose.Types.ObjectId(userId), "$Server_Members.user"]
+                        },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $addFields: {
+                "Member_Count": {
+                    $size: "$Server_Members"
+                }
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                name: 1,
+                imageUrl: 1,
+                "Member_Count": 1,
+                "isJoined": 1
+            }
+        }
+    ])
+}

@@ -1,6 +1,4 @@
-import { findTheServerWithServerId, findTheServerWithServerName, getServerInfoFromMongodb, getServerSidebarInfo } from "../helpers/server.helpers.js";
-import { findTheUserWithEmail } from "../helpers/user.helpers.js";
-import Channel from "../models/channel.models.js";
+import { findTheServerWithServerName, getServerInfoFromMongodb, getServerInfoFromMongodbForServerInvitation, getServerSidebarInfo } from "../helpers/server.helpers.js";
 import Server from "../models/server.models.js";
 import ServerMember from "../models/server_member.models.js";
 import { v4 } from "uuid"
@@ -40,15 +38,24 @@ export async function createServer(req, res) {
             return res.status(400).json({ message: "Give owner info" });
         }
 
-        const isUserExist = await findTheUserWithEmail(userEmail)
+        const isUserExist = await User.findOne({ email: userEmail }, { _id: 1 })
 
-        if (!isUserExist.length) {
+        if (!isUserExist?._id) {
             return res.status(400).json({ message: "User not found" });
+        }
+
+        const inviteCode = v4()
+
+        if (!inviteCode) {
+            return res.status(400).json({
+                message: "Failed to generate invite code"
+            })
         }
 
         const isServerCreated = await Server.create({
             name,
-            imageUrl: imageUrl || ""
+            imageUrl: imageUrl || "",
+            inviteCode
         })
 
         if (!isServerCreated._id) {
@@ -58,7 +65,7 @@ export async function createServer(req, res) {
         }
 
         const isJoinedToServer = await ServerMember.create({
-            user: isUserExist[0]._id,
+            user: isUserExist._id,
             server: isServerCreated._id,
             role: "Admin"
         })
@@ -128,23 +135,14 @@ export async function joinToTheServer(req, res) {
 }
 
 export async function checkIsTheUserAlreadyJoined(req, res) {
+    // In this function first checking is the user exists and getting the user id and checking is the server exist with this invite code if exist getting the server info and checking is the user is already joined or not
     try {
         const { userEmail, inviteCode } = req.body
         const { serverId } = req.params
+
         if (!userEmail || !serverId || !inviteCode) {
             return res.status(400).json({
                 message: "Please provide user id, invite code and server id"
-            })
-        }
-
-        const isServerExist = await Server.findOne({
-            _id: serverId,
-            inviteCode: inviteCode
-        }, { inviteCode: 1 })
-
-        if (!isServerExist) {
-            return res.status(400).json({
-                message: "Server does not exist or invite code is not valid"
             })
         }
 
@@ -152,29 +150,31 @@ export async function checkIsTheUserAlreadyJoined(req, res) {
             email: userEmail
         }, { _id: 1 })
 
+
         if (!isUserExist) {
             return res.status(400).json({
                 message: "User does not exist"
             })
         }
 
-        const isAlreadyJoined = await ServerMember.findOne({
-            user: isUserExist._id,
-            server: serverId
-        }, { _id: 1 })
+        const serverInfo = await getServerInfoFromMongodbForServerInvitation(serverId, inviteCode,isUserExist._id)
 
-        if (isAlreadyJoined?._id) {
+        if (!serverInfo?.length) {
             return res.status(400).json({
-                message: "User already joined to the server"
+                message: "Server not found or invalid invite code"
             })
         }
 
-        return res.status(201).json({
-            message: "You have already joined to the server",
-            succes: true,
-            data: {
-                userId : isUserExist._id
-            }
+        if (serverInfo[0].isJoined) {
+            return res.status(400).json({
+                message: "Already joined"
+            })
+        }
+
+        return res.status(202).json({
+            success: true,
+            userId: isUserExist._id,
+            serverInfo: serverInfo[0]
         })
     } catch (err) {
         return res.status(500).json({
@@ -241,7 +241,7 @@ export async function createServerInviteCode(req, res) {
             })
         }
         return res.status(201).json({
-            message: "Invite code updated successfully",
+            success: true,
             inviteCode: isInviteCodeUpdated.inviteCode
         })
 
