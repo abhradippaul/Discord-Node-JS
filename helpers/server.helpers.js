@@ -140,44 +140,55 @@ export async function getServerSidebarInfo(serverId) {
             }
         },
         {
+            $addFields: {
+                Member_Count: {
+                    $size: "$Server_Members"
+                }
+            }
+        },
+        {
             $lookup: {
                 from: "channels",
-                localField: "channel",
-                foreignField: "_id",
+                localField: "_id",
+                foreignField: "server",
                 as: "Channel",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: "users",
-                            localField: "user",
-                            foreignField: "_id",
-                            as: "Users"
-                        }
-                    },
-                    {
-                        $addFields: {
-                            UserInfo: {
-                                $first: "$Users"
-                            }
-                        }
-                    }
-                ]
+                // pipeline: [
+                //     {
+                //         $lookup: {
+                //             from: "users",
+                //             localField: "user",
+                //             foreignField: "_id",
+                //             as: "Users"
+                //         }
+                //     },
+                //     {
+                //         $addFields: {
+                //             UserInfo: {
+                //                 $first: "$Users"
+                //             }
+                //         }
+                //     }
+                // ]
             }
         },
         {
             $project: {
+                _id: 0,
                 name: 1,
                 imageUrl: 1,
                 "Server_Members.role": 1,
-                "Server_Members.UserInfo.email": 1,
                 "Server_Members.UserInfo.name": 1,
                 "Server_Members.UserInfo.imageUrl": 1,
                 "Server_Members.UserInfo._id": 1,
-                "Channel.channel": 1,
-                "Channel.UserInfo.email": 1,
-                "Channel.UserInfo.name": 1,
-                "Channel.UserInfo.imageUrl": 1,
-                "Channel.UserInfo._id": 1,
+                "Server_Members.UserInfo.email": 1,
+                "Member_Count": 1,
+                "Channel._id": 1,
+                "Channel.type": 1,
+                "Channel.name": 1,
+                // "Channel.UserInfo.email": 1,
+                // "Channel.UserInfo.name": 1,
+                // "Channel.UserInfo.imageUrl": 1,
+                // "Channel.UserInfo._id": 1,
             }
         }
     ])

@@ -9,10 +9,14 @@ const channelSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "Server"
     },
-    channel: {
+    type: {
         type: String,
-        enum: ["Text", "Audio", "Video"],
-        default: "Text"
+        enum: ["TEXT", "AUDIO", "VIDEO"],
+        default: "TEXT"
+    },
+    name : {
+        type: String,
+        required: true
     }
 }, { timestamps: true })
 

@@ -112,20 +112,14 @@ export async function joinToTheServer(req, res) {
             })
         }
 
-        const isJoinedToServer = await ServerMember.create({
+        await ServerMember.create({
             user: userId,
             server: serverId
         })
 
-        if (!isJoinedToServer?._id) {
-            return res.status(400).json({
-                message: "User already joined to the server"
-            })
-        }
-
         return res.status(201).json({
             message: "Successfully joined to the server",
-            data: isJoinedToServer
+            success: true,
         })
     } catch (err) {
         return res.status(500).json({
@@ -157,7 +151,7 @@ export async function checkIsTheUserAlreadyJoined(req, res) {
             })
         }
 
-        const serverInfo = await getServerInfoFromMongodbForServerInvitation(serverId, inviteCode,isUserExist._id)
+        const serverInfo = await getServerInfoFromMongodbForServerInvitation(serverId, inviteCode, isUserExist._id)
 
         if (!serverInfo?.length) {
             return res.status(400).json({
@@ -166,8 +160,8 @@ export async function checkIsTheUserAlreadyJoined(req, res) {
         }
 
         if (serverInfo[0].isJoined) {
-            return res.status(400).json({
-                message: "Already joined"
+            return res.status(200).json({
+                message: "Already Joined"
             })
         }
 
@@ -254,24 +248,37 @@ export async function createServerInviteCode(req, res) {
 
 export async function leaveTheServer(req, res) {
     try {
-        const { userId, serverId } = req.body
-        if (!userId || !serverId) {
+        const { serverId } = req.params
+        const { userEmail } = req.body
+
+        if (!userEmail || !serverId) {
             return res.status(400).json({
-                message: "Please provide user id and server id"
+                message: "Please provide user email and server id"
             })
         }
+
+        const userId = await User.findOne({ email: userEmail }, { _id: 1 })
+
+        if (!userId?.id) {
+            return res.status(400).json({
+                message: "User does not exist"
+            })
+        }
+
         const response = await ServerMember.deleteOne({
             user: userId,
             server: serverId
         })
+
         if (!response.deletedCount) {
             return res.status(400).json({
                 message: "Failed to leave the server"
             })
         }
-        return res.status(201).json({
+
+        return res.status(200).json({
             message: "Leaved from the server successfully",
-            data: response
+            success: true
         })
     } catch (err) {
         return res.status(500).json({
@@ -316,7 +323,7 @@ export async function serverSidebarInfo(req, res) {
 
         if (!serverId) {
             return res.status(400).json({
-                message: "Please provide a server name"
+                message: "Please provide a server id"
             })
         }
 
@@ -340,36 +347,26 @@ export async function serverSidebarInfo(req, res) {
     }
 }
 
-export async function updateServerImage(req, res) {
+export async function updateServerInfo(req, res) {
     try {
-        const { imageUrl, name } = req.body
-        const { serverName } = req.params
-        if (name) {
-            return res.status(200).json({
-                message: "Server name cannot be changed"
+        const data = req.body
+        const { serverId } = req.params
+        if (!data.name && !data.imageUrl) {
+            return res.status(404).json({
+                message: "Please provide server name or image url"
             })
         }
-        if (!serverName) {
-            return res.status(400).json({
-                message: "Please provide a server name"
-            })
-        }
-        if (!imageUrl) {
-            return res.status(400).json({
-                message: "Please provide an image url"
-            })
-        }
-        const response = await Server.updateOne({ name: serverName }, { $set: { imageUrl: imageUrl } })
+        const response = await Server.updateOne({ _id: serverId }, { $set: data })
 
         if (!response.modifiedCount) {
             return res.status(400).json({
-                message: "Error in updating image"
+                message: "Error in updating server info"
             })
         }
 
         return res.status(200).json({
             message: "Image updated successfully",
-            data: response
+            success: true
         })
 
     } catch (err) {
@@ -381,14 +378,21 @@ export async function updateServerImage(req, res) {
 
 export async function deleteServer(req, res) {
     try {
-        const { serverName } = req.params
-        if (!serverName) {
+        const { serverId } = req.params
+        if (!serverId) {
             return res.status(400).json({
-                message: "Please provide a server name"
+                message: "Please provide a server id"
+            })
+        }
+        const leave = await ServerMember.deleteMany({ server: serverId })
+
+        if (!leave.deletedCount) {
+            return res.status(400).json({
+                message: "Error occurred while deleting server member"
             })
         }
 
-        const response = await Server.deleteOne({ name: serverName })
+        const response = await Server.deleteOne({ _id: serverId })
 
         if (!response.deletedCount) {
             return res.status(400).json({
@@ -398,7 +402,46 @@ export async function deleteServer(req, res) {
 
         return res.status(200).json({
             success: true,
-            data: response
+            message: "Server deleted successfully"
+        })
+    } catch (err) {
+        return res.status(500).json({
+            message: err.message
+        })
+    }
+}
+
+export async function updateUserPermission(req, res) {
+    try {
+        const { serverId } = req.params
+        const { userId, role } = req.body
+
+        if (!serverId) {
+            return res.status(400).json({
+                message: "Please provide server id"
+            })
+        }
+
+        if (!userId || !(role === "Admin" || role === "Moderator" || role === "Guest")) {
+            return res.status(400).json({
+                message: "Please provide valid user information"
+            })
+        }
+
+        const response = await ServerMember.updateOne({
+            server: serverId,
+            user: userId
+        }, { $set: { role: role } })
+
+        if (!response?.modifiedCount) {
+            return res.status(400).json({
+                message: "Error occurred while updating user permission"
+            })
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Permission updated successfully"
         })
     } catch (err) {
         return res.status(500).json({

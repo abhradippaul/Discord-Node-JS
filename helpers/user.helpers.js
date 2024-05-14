@@ -16,7 +16,7 @@ export async function findTheUserWithEmail(userEmail) {
     ])
 }
 
-export async function getUserInfoFromMongodb(userEmail) {
+export async function getUserInfoForSideNavbar(userEmail) {
     return await User.aggregate([
         {
             $match: {
@@ -52,9 +52,9 @@ export async function getUserInfoFromMongodb(userEmail) {
             $project: {
                 _id: 0,
                 name: 1,
-                email: 1,
                 imageUrl: 1,
                 "Server.role": 1,
+                "Server.ServerInfo.name": 1,
                 "Server.ServerInfo.name": 1,
                 "Server.ServerInfo.imageUrl": 1,
                 "Server.ServerInfo._id": 1,
